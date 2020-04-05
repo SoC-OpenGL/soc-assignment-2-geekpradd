@@ -1,6 +1,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <vector>
+#include <string>
 #include <cmath>
 #include "include/utility.hpp"
 #include "include/shader.hpp"
@@ -8,6 +10,7 @@
 #include "glm/gtc/type_ptr.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "include/cube.hpp"
+#include "include/skybox.hpp"
 #include "include/camera.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include "include/stb_image.h"
@@ -22,7 +25,10 @@ void reshape_viewport(GLFWwindow *w, int width, int height);
 void cursor_callback(GLFWwindow* window, double x, double y);
 void scroll_callback(GLFWwindow* w, double x, double y);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-GLuint loadTexture(char const* path);
+GLuint load_texture(char const* path);
+GLuint load_cube_texture(std::vector< std::string > paths, std::string base);
+std::vector<std::string> skybox = {"right.jpg", "left.jpg", "top.jpg", "bottom.jpg", "front.jpg", "back.jpg"};
+std::string skybox_base_path = "textures/skybox/";
 
 int main(){
     glfwInit();
@@ -42,10 +48,13 @@ int main(){
     glfwSetScrollCallback(w, scroll_callback);
     glfwSetKeyCallback(w, key_callback);
 
-    GLuint texture = loadTexture("textures/bricks.png");
+    GLuint texture = load_texture("textures/mural.jpg");
+    GLuint skyTexture = load_cube_texture(skybox, skybox_base_path);
     Shader *shdr = new Shader("shaders/vertexshad.glsl", "shaders/fragment.glsl");
+    Shader *skyShdr = new Shader("shaders/skyboxvertex.glsl", "shaders/skyboxfragment.glsl");
 
     Cube cube(true);
+    SkyBox skybox;
     
     while (!glfwWindowShouldClose(w)){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
@@ -58,6 +67,17 @@ int main(){
         glm::mat4 view = camera.getViewMatrix();
         glm::mat4 model = glm::mat4(1.0f);
 
+        glm::mat4 skyMapView = glm::mat4(glm::mat3(view));  
+
+        glDepthMask(GL_FALSE);
+        skyShdr->use();
+        skyShdr->setMatrix4f("view", skyMapView);
+        skyShdr->setMatrix4f("projection", projection);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyTexture);
+        glBindVertexArray(skybox.VAO);
+        glDrawArrays(GL_TRIANGLES, 0, skybox.vertex_count);
+        glDepthMask(GL_TRUE);
+
         shdr->use();
         shdr->setMatrix4f("view", view);
         shdr->setMatrix4f("model", model);
@@ -67,6 +87,7 @@ int main(){
         shdr->setMatrix4f("view", view);
         shdr->setMatrix4f("projection", projection);
         
+        glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(cube.VAO);
         glDrawArrays(GL_TRIANGLES, 0, cube.vertex_count);
 
@@ -104,7 +125,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     
 }
 
-GLuint loadTexture(char const * path)
+GLuint load_texture(char const * path)
 {
     GLuint textureID;
     glGenTextures(1, &textureID);
@@ -139,4 +160,36 @@ GLuint loadTexture(char const * path)
     }
 
     return textureID;
+}
+
+GLuint load_cube_texture(std::vector< std::string > paths, std::string base=""){
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture);
+    int w, h, nrChannels;
+    for (int i=0; i<paths.size(); ++i){
+        unsigned char* data = stbi_load((base+paths[i]).c_str(), &w, &h, &nrChannels, 0);
+        if (data){
+            GLenum format;
+            if (nrChannels == 1)
+                format = GL_RED;
+            else if (nrChannels == 3)
+                format = GL_RGB;
+            else 
+                format = GL_RGBA;
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        }
+        else {
+            std::cerr << "FAILED TO LOAD CUBE TEXTURE AT LOCATION " << paths[i] << std::endl;
+        }
+        stbi_image_free(data);
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return texture;
 }
