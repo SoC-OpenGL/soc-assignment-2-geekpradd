@@ -67,17 +67,6 @@ int main(){
         glm::mat4 view = camera.getViewMatrix();
         glm::mat4 model = glm::mat4(1.0f);
 
-        glm::mat4 skyMapView = glm::mat4(glm::mat3(view));  
-
-        glDepthMask(GL_FALSE);
-        skyShdr->use();
-        skyShdr->setMatrix4f("view", skyMapView);
-        skyShdr->setMatrix4f("projection", projection);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, skyTexture);
-        glBindVertexArray(skybox.VAO);
-        glDrawArrays(GL_TRIANGLES, 0, skybox.vertex_count);
-        glDepthMask(GL_TRUE);
-
         shdr->use();
         shdr->setMatrix4f("view", view);
         shdr->setMatrix4f("model", model);
@@ -90,6 +79,17 @@ int main(){
         glBindTexture(GL_TEXTURE_2D, texture);
         glBindVertexArray(cube.VAO);
         glDrawArrays(GL_TRIANGLES, 0, cube.vertex_count);
+
+        glm::mat4 skyMapView = glm::mat4(glm::mat3(view));  
+
+        glDepthFunc(GL_LEQUAL);
+        skyShdr->use();
+        skyShdr->setMatrix4f("view", skyMapView);
+        skyShdr->setMatrix4f("projection", projection);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyTexture);
+        glBindVertexArray(skybox.VAO);
+        glDrawArrays(GL_TRIANGLES, 0, skybox.vertex_count);
+        glDepthFunc(GL_LESS);
 
         glfwSwapBuffers(w);
         glfwPollEvents();
