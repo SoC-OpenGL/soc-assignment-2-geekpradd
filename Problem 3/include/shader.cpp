@@ -63,6 +63,9 @@ void Shader::setVec3f(const char* uniformID, glm::vec3 vector){
     glUniform3fv(glGetUniformLocation(id, uniformID), 1, glm::value_ptr(vector));
 }
 
+void Shader::setVec4f(const char* uniformID, glm::vec4 vector){
+    glUniform4fv(glGetUniformLocation(id, uniformID), 1, glm::value_ptr(vector));
+}
 void Shader::setMatrix4f(const char* uniformID, glm::mat4 matrix){
     glUniformMatrix4fv(glGetUniformLocation(id, uniformID), 1, GL_FALSE, glm::value_ptr(matrix));
 }

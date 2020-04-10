@@ -15,9 +15,14 @@
 #include "include/camera.hpp"
 #define STB_IMAGE_IMPLEMENTATION
 #include "include/stb_image.h"
-bool DEBUG=true;
+// Press X to switch DEBUG
+// Press B to change from Blinn Phong to Phong
+// Press L to switch between light types
+bool DEBUG=false;
 int blinnPhong = 1;
 int globalTextureCount = 0;
+int lightType = 1; // 0 = point light, 1 = directional light, 2 = spotlight
+
 glm::vec3 initialCameraPos = glm::vec3(0.0f, 0.0f, 15.0f); // +Z
 glm::vec3 initialUpperVec = glm::vec3(0.0f, 1.0f, 0.0f); //+
 
@@ -50,9 +55,11 @@ int main(){
     glfwSetScrollCallback(w, scroll_callback);
     glfwSetKeyCallback(w, key_callback);
 
-    GLuint texture = load_texture("textures/rock/Rock035_2K_Color.jpg");
-    GLuint normal = load_texture("textures/rock/Rock035_2K_Normal.jpg");
     GLuint skyTexture = load_cube_texture(skybox, skybox_base_path);
+    GLuint diffuse = load_texture("textures/rock/Rock035_2K_Color.jpg");
+    GLuint normal = load_texture("textures/rock/Rock035_2K_Normal.jpg");
+    GLuint ambient = load_texture("textures/rock/Rock035_2K_AmbientOcclusion.jpg");
+
     Shader *skyShdr = new Shader("shaders/skyboxvertex.glsl", "shaders/skyboxfragment.glsl");
     Shader *sourceshdr = new Shader("shaders/spherevertexshader.glsl", "shaders/sourcefragment.glsl");
 
@@ -66,6 +73,7 @@ int main(){
     glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
     glm::vec3 objectColor = glm::vec3(1.0f, 0.5f, 0.31f);
     glm::vec3 lightPos(17.0f, 0.0f, 0.0f);
+    glm::vec3 lightDirection(-1.0f, 0.0f, 0.0f);
 
     while (!glfwWindowShouldClose(w)){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
@@ -86,10 +94,17 @@ int main(){
         shdr->setVec3f("viewLoc", camera.cameraPos);
         shdr->setMatrix4f("projection", projection);
 
-        shdr->setVec3f("light.ambient", glm::vec3(0.4f, 0.4f, 0.4f));
+        shdr->setVec3f("globalAmbient", glm::vec3(0.4f, 0.4f, 0.4f));
         shdr->setVec3f("light.diffuse", glm::vec3(0.7f, 0.7f, 0.7f));
         shdr->setVec3f("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
         shdr->setVec3f("light.position", lightPos);
+        shdr->setVec3f("light.direction", lightDirection);
+        shdr->setInt("light.type", lightType);
+        shdr->setFloat("light.constant",  1.0f);
+        shdr->setFloat("light.linear",    0.04f);
+        shdr->setFloat("light.quadratic", 0.0003f);
+        shdr->setFloat("light.cutOff",   glm::cos(glm::radians(12.5f)));
+        shdr->setFloat("light.outerCutOff",   glm::cos(glm::radians(30.0f)));
         shdr->setInt("blinnPhong", blinnPhong);
 
         // shdr->setVec3f("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
@@ -98,8 +113,8 @@ int main(){
         shdr->setVec3f("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
         shdr->setFloat("material.shininess", 32.0f);
         shdr->setInt("material.NORMAL", 1);
-        
-        glActiveTexture(GL_TEXTURE0);
+        shdr->setInt("material.AMBIENT", 2);
+    
         glBindVertexArray(cube.VAO);
         glDrawArrays(GL_TRIANGLES, 0, cube.vertex_count);
 
@@ -148,14 +163,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
+    else if (key==GLFW_KEY_X && action==GLFW_PRESS)
+        DEBUG = !DEBUG;
+    else if (key==GLFW_KEY_L && action==GLFW_PRESS)
+        lightType = (lightType+1)%3;
+    else if (key==GLFW_KEY_B && action==GLFW_PRESS)
+        blinnPhong = (blinnPhong+1)%2;
     else 
         camera.update_camera_position(key, action);
     
     if (key != GLFW_KEY_ESCAPE && DEBUG){
         std::cout << "Current Position is " << camera.cameraPos.x << ", " << camera.cameraPos.y << ", " << camera.cameraPos.z << std::endl;
-        std::cout << "Current up vector is " << camera.upperVec.x << ", " << camera.upperVec.y << ", " << camera.upperVec.z << std::endl;
-        std::cout << "Current lookat vector is " << camera.lookAt.x << ", " << camera.lookAt.y << ", " << camera.lookAt.z << std::endl;
-
     }
     
 }

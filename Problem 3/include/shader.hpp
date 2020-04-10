@@ -14,6 +14,7 @@ class Shader{
         void setFloat(const char* uniformID, float value);
         void setInt(const char* uniformID, int value);
         void setVec3f(const char* uniformID, glm::vec3 vector);
+        void setVec4f(const char* uniformID, glm::vec4 vector);
         void setMatrix4f(const char* uniformID, glm::mat4 matrix);
 };
 
