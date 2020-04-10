@@ -19,10 +19,9 @@ public:
     float fov = 45.0f;
     float x_glob, y_glob, speed;
 
-    Camera(glm::vec3 initialPosition, glm::vec3 upperDirection, glm::vec3 lookDir, float width=800, float height=600){
+    Camera(glm::vec3 initialPosition, glm::vec3 upperDirection, float width=800, float height=600){
         cameraPos = initialPosition;
         upperVec = upperDirection;
-        lookAt = lookDir;
 
         rightVec = glm::normalize(glm::cross(upperVec, cameraPos)); // +X
         x_glob = width/2; y_glob = height/2;

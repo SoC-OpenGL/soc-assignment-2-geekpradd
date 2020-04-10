@@ -16,20 +16,21 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "include/stb_image.h"
 bool DEBUG=true;
+int blinnPhong = 1;
+int globalTextureCount = 0;
+glm::vec3 initialCameraPos = glm::vec3(0.0f, 0.0f, 15.0f); // +Z
+glm::vec3 initialUpperVec = glm::vec3(0.0f, 1.0f, 0.0f); //+
 
-glm::vec3 initialCameraPos = glm::vec3(0.0f, 0.0f, 6.0f); // +Z
-glm::vec3 initialUpperVec = glm::vec3(0.0f, 1.0f, 0.0f); //+Y
-glm::vec3 initialLookAt = glm::vec3(0.0f, 0.0f, -1.0f);
-Camera camera(initialCameraPos, initialUpperVec, initialLookAt);
-
+// this camera always points in -z initially
+Camera camera(initialCameraPos, initialUpperVec);
 void reshape_viewport(GLFWwindow *w, int width, int height);
 void cursor_callback(GLFWwindow* window, double x, double y);
 void scroll_callback(GLFWwindow* w, double x, double y);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 GLuint load_texture(char const* path);
 GLuint load_cube_texture(std::vector< std::string > paths, std::string base);
-std::vector<std::string> skybox = {"right.jpg", "left.jpg", "top.jpg", "bottom.jpg", "front.jpg", "back.jpg"};
-std::string skybox_base_path = "textures/skybox/";
+std::vector<std::string> skybox = {"right.png", "left.png", "top.png", "bottom.png", "front.png", "back.png"};
+std::string skybox_base_path = "textures/skybox3/";
 
 int main(){
     glfwInit();
@@ -49,18 +50,23 @@ int main(){
     glfwSetScrollCallback(w, scroll_callback);
     glfwSetKeyCallback(w, key_callback);
 
-    GLuint texture = load_texture("textures/brickwall.jpg");
+    GLuint texture = load_texture("textures/rock/Rock035_2K_Color.jpg");
+    GLuint normal = load_texture("textures/rock/Rock035_2K_Normal.jpg");
     GLuint skyTexture = load_cube_texture(skybox, skybox_base_path);
-    Shader *shdr = new Shader("shaders/cubelightingvertexshader.glsl", "shaders/cubelightingfragment.glsl");
     Shader *skyShdr = new Shader("shaders/skyboxvertex.glsl", "shaders/skyboxfragment.glsl");
     Shader *sourceshdr = new Shader("shaders/spherevertexshader.glsl", "shaders/sourcefragment.glsl");
 
-    Cube cube(true);
+
+    Shader *shdr = new Shader("shaders/cubelightingvertexshader.glsl", "shaders/cubelightingfragment.glsl");
+    Cube cube(true, 10);
     SkyBox skybox;
-    Sphere sourcesph(0.2f);
-    glm::vec3 lightPos(0.0f, 0.0f, 10.0f);
-    glm::vec3 lightColor(1.0f, 1.0f, 1.0f); // color of light
+    // Sphere sph(5.0f);
+    Sphere sourcesph(1.0f);
     
+    glm::vec3 lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+    glm::vec3 objectColor = glm::vec3(1.0f, 0.5f, 0.31f);
+    glm::vec3 lightPos(17.0f, 0.0f, 0.0f);
+
     while (!glfwWindowShouldClose(w)){
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
         
@@ -80,16 +86,20 @@ int main(){
         shdr->setVec3f("viewLoc", camera.cameraPos);
         shdr->setMatrix4f("projection", projection);
 
-        shdr->setVec3f("light.ambient", glm::vec3(0.2f, 0.2f, 0.2f));
-        shdr->setVec3f("light.diffuse", glm::vec3(0.5f, 0.5f, 0.5f));
+        shdr->setVec3f("light.ambient", glm::vec3(0.4f, 0.4f, 0.4f));
+        shdr->setVec3f("light.diffuse", glm::vec3(0.7f, 0.7f, 0.7f));
         shdr->setVec3f("light.specular", glm::vec3(1.0f, 1.0f, 1.0f));
         shdr->setVec3f("light.position", lightPos);
+        shdr->setInt("blinnPhong", blinnPhong);
 
+        // shdr->setVec3f("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+        // shdr->setFloat("material.shininess", 32.0f);
+        shdr->setInt("material.TEXTURE", 0);
         shdr->setVec3f("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
         shdr->setFloat("material.shininess", 32.0f);
-        shdr->setInt("material.TEXTURE", 0);
+        shdr->setInt("material.NORMAL", 1);
         
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glActiveTexture(GL_TEXTURE0);
         glBindVertexArray(cube.VAO);
         glDrawArrays(GL_TRIANGLES, 0, cube.vertex_count);
 
@@ -103,15 +113,15 @@ int main(){
         
         glDrawArrays(GL_TRIANGLES, 0, sourcesph.vertex_count);
 
-        // glm::mat4 skyMapView = glm::mat4(glm::mat3(view));  
-        // glDepthFunc(GL_LEQUAL);
-        // skyShdr->use();
-        // skyShdr->setMatrix4f("view", skyMapView);
-        // skyShdr->setMatrix4f("projection", projection);
-        // glBindTexture(GL_TEXTURE_CUBE_MAP, skyTexture);
-        // glBindVertexArray(skybox.VAO);
-        // glDrawArrays(GL_TRIANGLES, 0, skybox.vertex_count);
-        // glDepthFunc(GL_LESS);
+        glm::mat4 skyMapView = glm::mat4(glm::mat3(view));  
+        glDepthFunc(GL_LEQUAL);
+        skyShdr->use();
+        skyShdr->setMatrix4f("view", skyMapView);
+        skyShdr->setMatrix4f("projection", projection);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyTexture);
+        glBindVertexArray(skybox.VAO);
+        glDrawArrays(GL_TRIANGLES, 0, skybox.vertex_count);
+        glDepthFunc(GL_LESS);
 
         glfwSwapBuffers(w);
         glfwPollEvents();
@@ -143,6 +153,9 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     
     if (key != GLFW_KEY_ESCAPE && DEBUG){
         std::cout << "Current Position is " << camera.cameraPos.x << ", " << camera.cameraPos.y << ", " << camera.cameraPos.z << std::endl;
+        std::cout << "Current up vector is " << camera.upperVec.x << ", " << camera.upperVec.y << ", " << camera.upperVec.z << std::endl;
+        std::cout << "Current lookat vector is " << camera.lookAt.x << ", " << camera.lookAt.y << ", " << camera.lookAt.z << std::endl;
+
     }
     
 }
@@ -164,6 +177,8 @@ GLuint load_texture(char const * path)
         else if (nrComponents == 4)
             format = GL_RGBA;
 
+        glActiveTexture(GL_TEXTURE0 + globalTextureCount);
+        globalTextureCount++;
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -199,7 +214,7 @@ GLuint load_cube_texture(std::vector< std::string > paths, std::string base=""){
                 format = GL_RGB;
             else 
                 format = GL_RGBA;
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, w, h, 0, format, GL_UNSIGNED_BYTE, data);
         }
         else {
             std::cerr << "FAILED TO LOAD CUBE TEXTURE AT LOCATION " << paths[i] << std::endl;
