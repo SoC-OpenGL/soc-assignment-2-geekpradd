@@ -59,6 +59,7 @@ int main(){
     GLuint diffuse = load_texture("textures/rock/Rock035_2K_Color.jpg");
     GLuint normal = load_texture("textures/rock/Rock035_2K_Normal.jpg");
     GLuint ambient = load_texture("textures/rock/Rock035_2K_AmbientOcclusion.jpg");
+    GLuint roughness = load_texture("textures/rock/Rock035_2K_Roughness.jpg");
 
     Shader *skyShdr = new Shader("shaders/skyboxvertex.glsl", "shaders/skyboxfragment.glsl");
     Shader *sourceshdr = new Shader("shaders/spherevertexshader.glsl", "shaders/sourcefragment.glsl");
@@ -107,13 +108,12 @@ int main(){
         shdr->setFloat("light.outerCutOff",   glm::cos(glm::radians(30.0f)));
         shdr->setInt("blinnPhong", blinnPhong);
 
-        // shdr->setVec3f("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-        // shdr->setFloat("material.shininess", 32.0f);
         shdr->setInt("material.TEXTURE", 0);
         shdr->setVec3f("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
         shdr->setFloat("material.shininess", 32.0f);
         shdr->setInt("material.NORMAL", 1);
         shdr->setInt("material.AMBIENT", 2);
+        shdr->setInt("material.ROUGHNESS", 2);
     
         glBindVertexArray(cube.VAO);
         glDrawArrays(GL_TRIANGLES, 0, cube.vertex_count);

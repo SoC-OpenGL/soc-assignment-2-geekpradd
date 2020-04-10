@@ -11,6 +11,7 @@ struct Material {
     float shininess;
     sampler2D NORMAL;
     sampler2D AMBIENT;
+    sampler2D ROUGHNESS;
 };
 
 struct Light {
@@ -36,13 +37,12 @@ uniform int blinnPhong;
 void main(){
     int cutOffState = 0;
     float clampIntensity;
-    vec3 base = vec3(texture(material.DIFFUSE, texCoords));
-    vec3 ambientOcculsion = vec3(texture(material.AMBIENT, texCoords));
+    vec3 base = texture(material.DIFFUSE, texCoords).rgb;
     vec3 normal_n = texture(material.NORMAL, texCoords).rgb;
     normal_n = (normal_n*2.0 - 1.0);
     normal_n = normalize(TBN*normal_n);
 
-    vec3 ambient = globalAmbient * base * ambientOcculsion;
+    vec3 ambient = globalAmbient * base * texture(material.AMBIENT, texCoords).r;
 
     vec3 lightDir;
     if (light.type == 0) // point light
@@ -65,9 +65,9 @@ void main(){
     vec3 halfway = normalize(lightDir + viewDir);
     float spec;
     if (blinnPhong != 0)
-        spec = pow(max(dot(normal_n, halfway), 0.0), material.shininess);
+        spec = pow(max(dot(normal_n, halfway), 0.0), material.shininess*(texture(material.ROUGHNESS, texCoords).r));
     else
-        spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+        spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess*(texture(material.ROUGHNESS, texCoords).r));
     vec3 specular =  spec * material.specular * light.specular;
     float diffuseStrength = max(dot(lightDir, normal_n), 0.0);
     vec3 diffuse = diffuseStrength * base * light.diffuse;
